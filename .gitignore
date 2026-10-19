@@ -1,0 +1,23 @@
+# UEFN / Unreal generated state
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Local editor and source-control state
+.lore/
+.codex-backup/
+.vscode/
+.vs/
+*.code-workspace
+*.VC.db
+*.opensdf
+*.opendb
+*.sdf
+*.sln
+*.suo
+
+# User-local UEFN content
+Content/Developers/
+Content/Collections/
+**/Desktop.ini

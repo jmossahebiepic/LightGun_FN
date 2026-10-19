@@ -1,0 +1,16 @@
+{
+  "updatedAt": "2026-10-19",
+  "status": "Independent LightGunFN starter; current hashes after tooltip/comment and agent-guide pass",
+  "files": {
+    "lightgun_controller.verse": "3eb56aac06c1287ab3f4d0a735cb2fde2c7f1b43005998fa82ac9ac1dde6611b",
+    "lightgun_encounter.verse": "dbd41438896ae4038923ca26dbbf6577003fdb19a7c659ab8d67bf193caa35e6",
+    "lightgun_game_manager.verse": "f222a1f9029cfd010f54cd537b11aad7762f44e01837786809b7f60aab519f64",
+    "lightgun_hud.verse": "c7bfaf7f89b4887d804597e8244c9b1bcb46ec0018f21fd8f2496efed8c34f37",
+    "lightgun_pointer_input.verse": "fcaf51df20e8933aab783cb689104ef43958bf09a9b0007ad454c289c51c568b",
+    "lightgun_practice_target.verse": "0d53f592425530779025e7efab0088b0f137e9576db32ba0925c623ab98273b0",
+    "lightgun_route.verse": "a5c4c2951fdbbb29ab48662231993c8484d1b91ab91191b2dea66776177ad3e1",
+    "lightgun_template_tags.verse": "cee9c25a448b684b298add01375198705bb836403c4afde17c2a5e853e816348"
+  },
+  "lastTooltipPass": "2026-10-19",
+  "lastVerseBuild": "2026-10-19 SUCCESS"
+}
