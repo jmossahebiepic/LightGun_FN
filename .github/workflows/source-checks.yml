@@ -1,0 +1,13 @@
+name: Source contracts and safe export
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run standard-library tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Build allowlisted source handoff
+        run: python3 tools/export_source_starter.py --output dist/LightGunFN-source.zip

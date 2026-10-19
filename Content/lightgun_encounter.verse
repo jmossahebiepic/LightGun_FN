@@ -9,13 +9,14 @@ LG_GuideCategory_lightgun_encounter<localizes> : message = "00 - Device Guide"
 
 # Localised UEFN Details-panel help; no gameplay logic below is changed.
 LG_Description_lightgun_encounter<localizes> : message = "Reusable targets for one station. The encounter activates once on first arrival and never respawns merely because the route revisits it. Set ExpectedEliminations to the complete authored wave before enabling automatic progression. This guide field is informational only."
-LG_Tip_lightgun_encounter_GuardSpawners<localizes> : message = "Preferred explicit Guard Spawners for this encounter. List each spawner once and in no other encounter. Configure finite limits, enemy team, health and weapons on the native devices. The supplied S01/S02 examples can fall back to their lg_s0*_guard_tag devices when this array is empty."
+LG_Tip_lightgun_encounter_GuardSpawners<localizes> : message = "Preferred explicit Guard Spawners for this encounter. List each spawner once and in no other encounter. Configure finite limits, enemy team, health and weapons on the native devices. An explicitly selected RangeA/RangeB GuardProfile can resolve its tagged group if this array is empty; route position never selects a group."
 LG_Tip_lightgun_encounter_NPCSpawners<localizes> : message = "Native NPC Spawners whose characters should be tracked for lightgun hits. Configure NPC definitions/behaviour on the native devices. Unlike Guard Spawners, custom NPCs do not receive automatic forced-attack orders. Do not share spawners between encounters."
 LG_Tip_lightgun_encounter_CreatureSpawners<localizes> : message = "Native Creature Spawners for tracked enemy targets. Arrival activation enables their native wave spawning. Set native game-start spawning off for arrival-only waves and configure finite limits if using ExpectedEliminations."
 LG_Tip_lightgun_encounter_CreaturePlacers<localizes> : message = "Native Creature Placers to spawn and track on first arrival. List each once and only in this encounter. Configure creature settings on the placer and include its expected eliminations in automatic wave completion."
 LG_Tip_lightgun_encounter_PracticeTargets<localizes> : message = "Lightgun Practice Target devices for neutral prop shooting. Assign a different prop to each target and list each target once. Props appear on encounter activation and hide when broken; each broken target counts as one elimination, regardless of HitsToBreak."
 LG_Tip_lightgun_encounter_SpawnOnFirstArrival<localizes> : message = "True enables native spawners and requests guard/NPC/placer spawns on first arrival. Disable native Enabled at Game Start for arrival-only spawning. False leaves native spawning to your other devices; practice props still activate on arrival. Revisits never respawn the wave."
 LG_Tip_lightgun_encounter_ExpectedEliminations<localizes> : message = "Full-wave elimination count: native enemies plus practice targets. Include delayed spawns. A value of 0 or less disables automatic completion for this encounter. The station must also enable AdvanceWhenEncountersComplete."
+LG_Tip_lightgun_encounter_GuardProfile<localizes> : message = "ExplicitOnly (default) uses assigned native spawner arrays. RangeA or RangeB resolves that tagged guard group if GuardSpawners is empty. The profile belongs to this encounter, not its route index. Do not share a native spawner between encounters."
 LG_Category_lightgun_encounter_Targets<localizes> : message = "01 - Targets and Spawners"
 LG_Category_lightgun_encounter_Waves<localizes> : message = "02 - Wave Activation"
 
@@ -59,6 +60,11 @@ lightgun_encounter := class(creative_device):
         Categories := array{LG_Category_lightgun_encounter_Waves}
     ExpectedEliminations : int = 0
 
+    @editable:
+        ToolTip := LG_Tip_lightgun_encounter_GuardProfile
+        Categories := array{LG_Category_lightgun_encounter_Waves}
+    GuardProfile : lightgun_guard_profile = lightgun_guard_profile.ExplicitOnly
+
     var Activated : logic = false
     var Initialized : logic = false
     var Controller : ?lightgun_controller = false
@@ -72,32 +78,32 @@ lightgun_encounter := class(creative_device):
     Subscribe(Subscription : cancelable) : void=
         set Subscriptions += array{Subscription}
 
-    TaggedGuardSpawners(StationIndex : int) : []guard_spawner_device=
-        # Template fallback only. A creator-added station should populate the
-        # GuardSpawners editable rather than extending this index switch.
+    TaggedGuardSpawners() : []guard_spawner_device=
+        # Encounter-owned profile is stable when stations are reordered.
         var Result : []guard_spawner_device = array{}
-        if (StationIndex = 1):
+        if (GuardProfile = lightgun_guard_profile.RangeA):
             for (Object : FindCreativeObjectsWithTag(lg_s01_guard_tag)):
                 if (Spawner := guard_spawner_device[Object]):
                     set Result += array{Spawner}
-        if (StationIndex = 2):
+        if (GuardProfile = lightgun_guard_profile.RangeB):
             for (Object : FindCreativeObjectsWithTag(lg_s02_guard_tag)):
                 if (Spawner := guard_spawner_device[Object]):
                     set Result += array{Spawner}
         return Result
 
-    Initialize(Owner : lightgun_controller, StationIndex : int) : logic=
+    Initialize(Owner : lightgun_controller) : logic=
         if (Initialized?):
             return false
         set Initialized = true
         set Controller = option{Owner}
         set ResolvedGuardSpawners = GuardSpawners
-        # Explicit arrays take precedence; tags reproduce the supplied example
-        # despite native-device references not being MCP-serializable.
-        if (ResolvedGuardSpawners.Length = 0 and StationIndex > 0):
-            set ResolvedGuardSpawners = TaggedGuardSpawners(StationIndex)
-        if (ExpectedEliminations > 0 and ResolvedGuardSpawners.Length = 0 and PracticeTargets.Length = 0):
-            Print("LightGunFN: encounter expects eliminations but has no tagged or assigned targets.")
+        # Explicit arrays win. Empty arrays only use an opted-in guard profile.
+        if (ResolvedGuardSpawners.Length = 0):
+            Owner.ClaimGuardProfile(GuardProfile)
+            set ResolvedGuardSpawners = TaggedGuardSpawners()
+        HasSources := LightgunHasEncounterSources(ResolvedGuardSpawners.Length, NPCSpawners.Length, CreatureSpawners.Length, CreaturePlacers.Length, PracticeTargets.Length)
+        if (ExpectedEliminations > 0 and not HasSources?):
+            Print("LightGunFN: encounter expects eliminations but has no native spawners or practice targets.")
             set Owner.SetupErrors += 1
         for (Spawner : ResolvedGuardSpawners):
             Subscribe(Spawner.SpawnedEvent.Subscribe(OnGuardSpawned))

@@ -1,55 +1,72 @@
 # LightGunFN — Lightgun Lab
 
-A small single-player UEFN onboarding example for a mouse-emulating lightgun and keyboard-emulating foot pedal.
+**Experimental independent learning prototype. Not an official Epic sample,
+certification or publishing-ready template.**
 
-## Working loop
+- **Trigger / left mouse:** fire.
+- **Fortnite Jump (Space by default) / pedal:** enter cover and reload; press
+  again to stand. There is no separate manual reload key.
 
-1. **S00 Input Test** — fire once, press Space or the pedal to enter cover and reload, then press it again to stand.
-2. **S01 Range A** — clear two finite guard spawners; the route advances automatically.
-3. **S02 Range B** — clear three guards; the round ends in victory.
+Reference loop: **input practice → two guards → three guards → finish**.
+Mouse/keyboard uses the same path as mouse-/keyboard-emulating hardware.
 
-Controls:
+## Start here
 
-- Trigger / left mouse: fire.
-- Space bar or pedal / Fortnite Jump action: toggle cover and reload on entry; this is the only normal reload mechanic.
-- Mouse and keyboard use the same gameplay path.
+1. Read [rights and dependencies](RIGHTS.md) before using or redistributing.
+2. Follow [first run](docs/FIRST_RUN.md). This revision is **source-first**,
+   not a bound project that any account can launch unchanged.
+3. Follow [add a station](docs/ADD_A_STATION.md), then
+   [troubleshooting](docs/TROUBLESHOOTING.md) if the result differs.
 
-## Built map
+Authorized collaborators can use the original local project and private
+descriptors, which are no longer tracked. The map and OFPA packages are
+historical/reference authoring assets, **not a certified portable starter**.
+Before pulling into an older bound checkout, read [migration](docs/MIGRATION.md)
+and back up its descriptors; Git can remove formerly tracked files on update.
 
-The `LightGunFN` map now contains:
+## Wiring
 
-- One `lightgun_game_manager`, START and two combat stations.
-- Two live Fixed Point Cameras and six station target cameras.
-- Two arrival-only encounters with two and three finite guards.
-- Victory and defeat End Game devices configured to end the round.
-- A neutral room blockout with side/end walls and low foreground cover.
-- Six-round magazine, untimed practice, onboarding checklist and remaining-enemy HUD.
+- The manager references START, which owns `CombatStations`.
+- A station's `CameraProfile` owns its optional fallback, not its route index.
+  Explicit target references take precedence.
+- An encounter's `GuardProfile` owns its optional tagged group; different
+  encounters cannot claim the same fallback group.
+- New stations and encounters default to `ExplicitOnly`.
+- Native tags require **VerseTagMarkupComponent**, not Actor Tags.
+- Reference FOV is 55°, guard distance about 14.5 m, and magazine size 6.
+  These are examples, not universal hardware calibration.
 
-Native device discovery uses `VerseTagMarkupComponent` tags declared in `lightgun_template_tags.verse`. Explicit editable references remain supported and preferred for creator-authored extensions.
+## Reload contract
 
-For repository structure, invariants and the required agent workflow, read
-[`AGENTS.md`](AGENTS.md) before modifying Verse or placed devices.
+Exposed-to-covered reloads once. Remaining covered through travel does not.
+If the final cover state changes from exposed during travel, apply it once on
+arrival. `ReloadOnArrival` performs one refill and suppresses a simultaneous
+cover refill. Standing does not reload.
 
-## Important settings
+Keep `LoopRoute = false`; a route loop is not a reset. Positive
+`ExpectedEliminations` must cover the full authored wave; 0 means manual
+progression. Incorrect counts or failed spawns can stall a round.
 
-- `LoopRoute = false`; replay is a fresh round.
-- `ReloadOnCover = true`; entering cover reloads once and standing does not. There is no independent manual reload input.
-- Camera `Add to Players on Start = false`; Verse owns the active camera stack.
-- All live/target cameras use a 55 degree FOV and guards sit roughly 14.5 m from each firing camera for larger silhouettes.
-- Every guard spawner is disabled at game start, has one active guard and a lifetime limit of one.
-- S01 `ExpectedEliminations = 2`; S02 `ExpectedEliminations = 3`.
-- Guard team is Team 2; the player is expected on Team 1.
-- Project matchmaking maximum is one player.
+## Safe source handoff
 
-## Verified on 19 October 2026
+With Python 3.10+:
 
-- Verse build completed with no diagnostics.
-- A UEFN play session started successfully.
-- Runtime log reported all three stations ready and the controller configured.
-- Route order, encounter references/counts, camera FOV/start behaviour and finite guard settings were read back after saving.
+```shell
+python -m unittest discover -s tests -v
+python tools/export_source_starter.py --output dist/LightGunFN-source.zip
+```
 
-Physical lightgun/pedal input, actual guard combat, all three checklist inputs and final victory should be rechecked after gameplay or device-layout changes.
+The allowlisted ZIP includes Verse and guides, not bound descriptors, UAssets,
+editor caches, local paths or Python/MCP-enable settings. Credential-pattern
+checks are a safeguard, not a security certification. The handoff is
+subject to RIGHTS.md and is not a turnkey playable island.
 
-## Targeting boundary
+## Limits and evidence
 
-Current targeting chooses the nearest accepted target depth using a point-radius test. It is not a mesh-accurate or wall-occluded trace. Keep targets in the supplied open lanes and treat this as an experimental open-lane prototype until stronger targeting is implemented and verified.
+Read [dated verification/open gates](docs/VERIFICATION.md). Compilation and startup
+do not prove combat, hardware, victory/defeat/replay or an independent first run.
+Targeting is nearest accepted depth around an aim point, not mesh-accurate or
+wall-occluded. Use open lanes. Explicit native-reference uniqueness remains an
+editor check because those Verse wrappers are not comparable.
+
+Agents: [AGENTS.md](AGENTS.md). Identity/automation: [SECURITY.md](docs/SECURITY.md).

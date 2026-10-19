@@ -1,69 +1,50 @@
-# LightGunFN agent guide
+# Agent guide — entire repository
 
-## Scope
-
-This repository is one single-player UEFN lightgun starter. Preserve the
-working S00 → S01 → S02 example and keep theme-specific Hoth content out.
-Read `README.md` before changing code or placed devices.
+Read README.md, RIGHTS.md and docs/VERIFICATION.md. This is an independent
+experimental learning prototype, not an official Epic product or cleared release.
 
 ## Source map
+- `Content/lightgun_game_manager.verse`: creator-facing class. Preserve its
+  `lightgun_controller` base and all serialized class/property identities.
+- `lightgun_controller.verse`: input, camera rig, hidden proxy, route, lifecycle.
+- `lightgun_pointer_input.verse`: LUF deprojection boundary; never mix its vectors
+  with the controller's XYZ imports.
+- `lightgun_route.verse`: station-owned CameraProfile and travel settings.
+- `lightgun_encounter.verse`: encounter-owned GuardProfile and wave bookkeeping.
+- `lightgun_rules.verse`: pure rules used by gameplay and the regression fixture.
+- HUD, practice_target and template_tags files: presentation, prop targets and
+  optional native-device lookup.
 
-- `Content/lightgun_controller.verse`: input, cover/reload, combat, cameras,
-  route execution, HUD state, player proxy and round lifecycle.
-- `Content/lightgun_pointer_input.verse`: Virtual Pointer deprojection and the
-  LUF-to-XYZ type boundary. Keep this isolation.
-- `Content/lightgun_route.verse`: START, station settings, targets and travel.
-- `Content/lightgun_encounter.verse`: spawner activation, target tracking and
-  explicit elimination counts.
-- `Content/lightgun_practice_target.verse`: neutral shootable prop adapter.
-- `Content/lightgun_hud.verse`: asset-free, non-interactive HUD.
-- `Content/lightgun_template_tags.verse`: native-device fallback tags for the
-  supplied three-stop map.
-- `Content/lightgun_game_manager.verse`: creator-facing subclass. New maps
-  place this class; keep `lightgun_controller` for serialized compatibility.
+## Contracts
+- One player/manager/START. START never appears in its own combat list.
+- Pointer fires. Jump/Space/pedal controls cover/reload. No manual reload key.
+- Reload on exposed-to-covered entry, not repeated camera application.
+- Preserve logical cover in travel. ReloadOnArrival prevents a double refill.
+- Never refresh gameplay HUD after the session ends.
+- Validate all five encounter source kinds; completion uses a full-wave count.
+- Explicit references win. Profiles follow devices, not route indices.
+- Native lookup needs VerseTagMarkupComponent; ambiguous camera/end tags fail.
+- Guard fallback groups are exclusive to an encounter. Explicit native reference
+  uniqueness must be checked in the editor too.
+- Camera targets supply transforms only; live cameras move; auto-add flags off.
+- Preserve open lanes; no mesh-hit or wall-occlusion claim.
 
-## Non-negotiable contracts
+## Workflow
+1. Verify active project/map and local changes; discover current tool schemas.
+2. Prefer catalog placement. A particular MCP reference-write failure does not
+   prove placement is wrong. Use editor Details for explicit references.
+3. Build Verse after source edits and record actual diagnostics/build version.
+4. Run Python tests. Run the fixture under `tests/fixtures` in UEFN as documented;
+   remove its temporary actor and Content source before shipping the map.
+5. Save OFPA packages with the map; test a fresh round after gameplay edits.
+6. Report pending hardware, losing-team, reset and junior-usability checks.
+   Never re-date historical tests or equate a compile with a playthrough.
 
-- One player, one `lightgun_game_manager`, one START.
-- Trigger/left mouse fires. Fortnite Jump (Space or a bound pedal) toggles
-  cover and reloads on entry. There is no independent manual reload input.
-- START is route index 0 and never appears in its own `CombatStations`.
-- Live cameras move. Station cameras are transform-only authoring targets.
-  Every Fixed Point Camera has **Add to Players on Start = Off**.
-- Explicit editable references take precedence. Fixed tags only reproduce the
-  supplied S00/S01/S02 map; new stations use explicit camera/encounter arrays.
-- A tagged native actor needs `VerseTagMarkupComponent.InternalTags`; adding
-  an ordinary Unreal Actor Tag is insufficient.
-- Each native spawner belongs to one encounter. Arrival-only spawners start
-  disabled and use finite spawn limits.
-- Automatic progression requires a positive `ExpectedEliminations` covering
-  the full authored wave. Never infer completion from a temporary live count
-  of zero.
-- Route looping is not a round reset. Leave `LoopRoute` false in the example.
-- Do not rename serialized Verse classes merely for cleanup.
-
-## Editing workflow
-
-1. Confirm the active UEFN project and map are `LightGunFN`.
-2. Use UEFN catalog placement for Creative devices; raw Blueprint spawning can
-   produce actors that Verse cannot reference.
-3. Build Verse after every source change and fix all error diagnostics.
-4. Save the level plus all OFPA external actors/objects.
-5. Launch a fresh play session. Require all three “station ready” messages and
-   the final “configured” message with no setup/runtime errors.
-6. Test fire, cover/reload, stand, two-enemy clear, three-enemy clear, defeat,
-   victory and a second fresh round.
-7. Re-test the actual gun, pedal, resolution and display scaling for input or
-   camera changes.
-
-## Safety and limitations
-
-- Current hit selection is point-radius and nearest accepted depth; it is not a
-  mesh trace and does not test wall occlusion. Keep targets in open lanes.
-- Virtual Pointer support and publishing eligibility must be rechecked against
-  the target UEFN/Fortnite release. Do not promise publishability from a local
-  build.
-- Keep project identity, `.uefnproject`, map, `__ExternalActors__` and
-  `__ExternalObjects__` together. A `.umap` alone is not a backup.
-- Never commit `.lore/`, `.codex-backup/`, `Saved/`, `Intermediate/` or local
-  workspace/editor files.
+## Publishing
+- Bound descriptors are local-only; do not unignore or publish them.
+- Do not rewrite IDs/binaries to simulate a new project. Use the source export.
+- No local caches, logs, editor automation preferences or absolute source paths.
+- Historical identifiers remain in Git. Do not force-push a purge without
+  explicit authorization; identifiers are not authentication credentials.
+- Do not grant an open-source license or clear platform assets without the
+  rights holder's authority. Keep unresolved release gates explicit.

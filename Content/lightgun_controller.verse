@@ -33,7 +33,7 @@ LG_Tip_lightgun_game_manager_EnableOnboardingChecklist<localizes> : message = "T
 LG_Tip_lightgun_game_manager_AutoAdvanceOnChecklist<localizes> : message = "After all three input checks pass, show TEST COMPLETE for ChecklistCompletionDelay seconds, then travel to the first CombatStation. Requires at least one CombatStation. Turn off to keep START as a manual test bay."
 LG_Tip_lightgun_game_manager_ChecklistCompletionDelay<localizes> : message = "Seconds to display TEST COMPLETE before automatic travel. Clamped to at least 0.1 seconds. Repeated input cannot queue another move."
 LG_Tip_lightgun_game_manager_DuckIsToggle<localizes> : message = "True: each Fortnite Jump press toggles cover; release does nothing. Space is the default keyboard input, and a pedal may be bound to the same action. False: hold Jump to cover and release to expose. This is not hold-to-expose mode."
-LG_Tip_lightgun_game_manager_ReloadOnCover<localizes> : message = "When true, entering cover refills the magazine once and plays ReloadSound. Standing does not reload. This template has no separate manual reload input: Space or the pedal is the normal reload mechanic. ReloadOnArrival remains an optional station override."
+LG_Tip_lightgun_game_manager_ReloadOnCover<localizes> : message = "When true, an exposed-to-covered transition refills once. Reapplying cover after travel or character setup does not refill; entering cover from exposed during travel refills once at arrival. Standing never reloads. This template has no separate manual reload input: Space or the pedal is the normal reload mechanic. ReloadOnArrival remains an optional station override."
 LG_Tip_lightgun_game_manager_ShowHud<localizes> : message = "Show the ammo, score, lives, timer and status overlay. Turning it off hides presentation only: all gameplay rules still apply. The HUD does not capture pointer clicks or pedal input."
 LG_Tip_lightgun_game_manager_ShowCalibrationGuide<localizes> : message = "With ShowHud enabled, adds guide marks at centre and near the screen edges. Use DebugPointer logs to calibrate pointer acceptance. This is not a Sinden tracking border and does not calibrate the gun driver. Turn off for normal play."
 LG_Tip_lightgun_game_manager_MagazineSize<localizes> : message = "Rounds available after startup or entering cover. Values below 1 are treated as 1. Every valid exposed shot spends one round, even on a miss. HUD visibility does not change ammunition rules."
@@ -307,6 +307,7 @@ lightgun_controller := class(creative_device):
     var CurrentStationIndex : int = 0
     var RouteStations : []lightgun_station = array{}
     var ActiveEncounters : []lightgun_encounter = array{}
+    var ClaimedGuardProfiles : []lightgun_guard_profile = array{}
     var StationStandingTargets : [int]transform = map{}
     var StationDuckedTargets : [int]transform = map{}
     var LockedCameraRelativeTransform : ?transform = false
@@ -329,7 +330,7 @@ lightgun_controller := class(creative_device):
 
     OnBegin<override>()<suspends>:void=
         # Resolution order is intentional: creator-authored editable references
-        # win; fixed tags only support the supplied S00/S01/S02 example map.
+        # win; station/encounter profiles own any fallback tag selection.
         set ResolvedStandingCamera = StandingCamera
         set ResolvedCoverCamera = CoverCamera
         set ResolvedVictoryEndGame = VictoryEndGame
@@ -381,74 +382,146 @@ lightgun_controller := class(creative_device):
     RememberSubscription(Subscription : cancelable) : void=
         set Subscriptions += array{Subscription}
 
-    # Native Creative devices cannot be serialized through the Verse-device MCP
-    # property writer. VerseTagMarkupComponents keep the example reproducible
-    # while explicit references remain available to creators in the Details panel.
+    # This project's October 2026 MCP reference-write attempt could not assign
+    # native devices. Profiles are an optional workaround, not a platform rule.
+    # Exactly one camera/end device per tag is required; fail rather than guess.
     FindLiveShootCamera() : ?gameplay_camera_fixed_point_device=
+        var Result : ?gameplay_camera_fixed_point_device = false
         for (Object : FindCreativeObjectsWithTag(lg_live_shoot_tag)):
             if (Device := gameplay_camera_fixed_point_device[Object]):
-                return option{Device}
-        return false
+                if (Result?):
+                    set SetupErrors += 1
+                    Print("LightGunFN: duplicate native-device tag: lg_live_shoot_tag.")
+                    return false
+                set Result = option{Device}
+        return Result
 
     FindLiveCoverCamera() : ?gameplay_camera_fixed_point_device=
+        var Result : ?gameplay_camera_fixed_point_device = false
         for (Object : FindCreativeObjectsWithTag(lg_live_cover_tag)):
             if (Device := gameplay_camera_fixed_point_device[Object]):
-                return option{Device}
-        return false
+                if (Result?):
+                    set SetupErrors += 1
+                    Print("LightGunFN: duplicate native-device tag: lg_live_cover_tag.")
+                    return false
+                set Result = option{Device}
+        return Result
 
     FindVictoryEndGame() : ?end_game_device=
+        var Result : ?end_game_device = false
         for (Object : FindCreativeObjectsWithTag(lg_victory_end_tag)):
             if (Device := end_game_device[Object]):
-                return option{Device}
-        return false
+                if (Result?):
+                    set SetupErrors += 1
+                    Print("LightGunFN: duplicate native-device tag: lg_victory_end_tag.")
+                    return false
+                set Result = option{Device}
+        return Result
 
     FindDefeatEndGame() : ?end_game_device=
+        var Result : ?end_game_device = false
         for (Object : FindCreativeObjectsWithTag(lg_defeat_end_tag)):
             if (Device := end_game_device[Object]):
-                return option{Device}
+                if (Result?):
+                    set SetupErrors += 1
+                    Print("LightGunFN: duplicate native-device tag: lg_defeat_end_tag.")
+                    return false
+                set Result = option{Device}
+        return Result
+
+    FindInputBayShoot() : ?gameplay_camera_fixed_point_device=
+        var Result : ?gameplay_camera_fixed_point_device = false
+        for (Object : FindCreativeObjectsWithTag(lg_s00_shoot_tag)):
+            if (Device := gameplay_camera_fixed_point_device[Object]):
+                if (Result?):
+                    set SetupErrors += 1
+                    Print("LightGunFN: duplicate native-device tag: lg_s00_shoot_tag.")
+                    return false
+                set Result = option{Device}
+        return Result
+
+    FindInputBayCover() : ?gameplay_camera_fixed_point_device=
+        var Result : ?gameplay_camera_fixed_point_device = false
+        for (Object : FindCreativeObjectsWithTag(lg_s00_cover_tag)):
+            if (Device := gameplay_camera_fixed_point_device[Object]):
+                if (Result?):
+                    set SetupErrors += 1
+                    Print("LightGunFN: duplicate native-device tag: lg_s00_cover_tag.")
+                    return false
+                set Result = option{Device}
+        return Result
+
+    FindRangeAShoot() : ?gameplay_camera_fixed_point_device=
+        var Result : ?gameplay_camera_fixed_point_device = false
+        for (Object : FindCreativeObjectsWithTag(lg_s01_shoot_tag)):
+            if (Device := gameplay_camera_fixed_point_device[Object]):
+                if (Result?):
+                    set SetupErrors += 1
+                    Print("LightGunFN: duplicate native-device tag: lg_s01_shoot_tag.")
+                    return false
+                set Result = option{Device}
+        return Result
+
+    FindRangeACover() : ?gameplay_camera_fixed_point_device=
+        var Result : ?gameplay_camera_fixed_point_device = false
+        for (Object : FindCreativeObjectsWithTag(lg_s01_cover_tag)):
+            if (Device := gameplay_camera_fixed_point_device[Object]):
+                if (Result?):
+                    set SetupErrors += 1
+                    Print("LightGunFN: duplicate native-device tag: lg_s01_cover_tag.")
+                    return false
+                set Result = option{Device}
+        return Result
+
+    FindRangeBShoot() : ?gameplay_camera_fixed_point_device=
+        var Result : ?gameplay_camera_fixed_point_device = false
+        for (Object : FindCreativeObjectsWithTag(lg_s02_shoot_tag)):
+            if (Device := gameplay_camera_fixed_point_device[Object]):
+                if (Result?):
+                    set SetupErrors += 1
+                    Print("LightGunFN: duplicate native-device tag: lg_s02_shoot_tag.")
+                    return false
+                set Result = option{Device}
+        return Result
+
+    FindRangeBCover() : ?gameplay_camera_fixed_point_device=
+        var Result : ?gameplay_camera_fixed_point_device = false
+        for (Object : FindCreativeObjectsWithTag(lg_s02_cover_tag)):
+            if (Device := gameplay_camera_fixed_point_device[Object]):
+                if (Result?):
+                    set SetupErrors += 1
+                    Print("LightGunFN: duplicate native-device tag: lg_s02_cover_tag.")
+                    return false
+                set Result = option{Device}
+        return Result
+
+    FallbackStandingTarget(Profile : lightgun_camera_profile) : ?gameplay_camera_fixed_point_device=
+        if (Profile = lightgun_camera_profile.InputBay):
+            return FindInputBayShoot()
+        if (Profile = lightgun_camera_profile.RangeA):
+            return FindRangeAShoot()
+        if (Profile = lightgun_camera_profile.RangeB):
+            return FindRangeBShoot()
         return false
 
-    FallbackStandingTarget(Index : int) : ?gameplay_camera_fixed_point_device=
-        # These tags are tied to the three-stop example route. Additional
-        # stations must assign their camera targets explicitly.
-        if (Index = 0):
-            for (Object : FindCreativeObjectsWithTag(lg_s00_shoot_tag)):
-                if (Device := gameplay_camera_fixed_point_device[Object]):
-                    return option{Device}
-        if (Index = 1):
-            for (Object : FindCreativeObjectsWithTag(lg_s01_shoot_tag)):
-                if (Device := gameplay_camera_fixed_point_device[Object]):
-                    return option{Device}
-        if (Index = 2):
-            for (Object : FindCreativeObjectsWithTag(lg_s02_shoot_tag)):
-                if (Device := gameplay_camera_fixed_point_device[Object]):
-                    return option{Device}
+    FallbackCoverTarget(Profile : lightgun_camera_profile) : ?gameplay_camera_fixed_point_device=
+        if (Profile = lightgun_camera_profile.InputBay):
+            return FindInputBayCover()
+        if (Profile = lightgun_camera_profile.RangeA):
+            return FindRangeACover()
+        if (Profile = lightgun_camera_profile.RangeB):
+            return FindRangeBCover()
         return false
 
-    FallbackCoverTarget(Index : int) : ?gameplay_camera_fixed_point_device=
-        if (Index = 0):
-            for (Object : FindCreativeObjectsWithTag(lg_s00_cover_tag)):
-                if (Device := gameplay_camera_fixed_point_device[Object]):
-                    return option{Device}
-        if (Index = 1):
-            for (Object : FindCreativeObjectsWithTag(lg_s01_cover_tag)):
-                if (Device := gameplay_camera_fixed_point_device[Object]):
-                    return option{Device}
-        if (Index = 2):
-            for (Object : FindCreativeObjectsWithTag(lg_s02_cover_tag)):
-                if (Device := gameplay_camera_fixed_point_device[Object]):
-                    return option{Device}
-        return false
-
-    ResolveStandingTarget(Index : int, Station : lightgun_station) : ?gameplay_camera_fixed_point_device=
+    ResolveStandingTarget(Station : lightgun_station) : ?gameplay_camera_fixed_point_device=
         if (Target := Station.StandingCameraTarget?):
             return option{Target}
-        return FallbackStandingTarget(Index)
+        return FallbackStandingTarget(Station.CameraProfile)
 
-    ResolveCoverTarget(Index : int, Station : lightgun_station) : ?gameplay_camera_fixed_point_device=
+    ResolveCoverTarget(Station : lightgun_station) : ?gameplay_camera_fixed_point_device=
         if (Target := Station.DuckedCameraTarget?):
             return option{Target}
-        return FallbackCoverTarget(Index)
+        return FallbackCoverTarget(Station.CameraProfile)
 
     ValidateStations() : void=
         for (Index -> Station : RouteStations):
@@ -456,17 +529,28 @@ lightgun_controller := class(creative_device):
                 set SetupErrors += 1
                 Print("LightGunFN: station repeated in route: {Station.StationName}")
             set Station.RegisteredInRoute = true
-            StandingOption := ResolveStandingTarget(Index, Station)
-            CoverOption := ResolveCoverTarget(Index, Station)
+            StandingOption := ResolveStandingTarget(Station)
+            CoverOption := ResolveCoverTarget(Station)
             if:
                 Standing := StandingOption?
                 Cover := CoverOption?
             then:
-                # Target cameras are transforms only, never player cameras.
+                # Native device wrappers are not comparable in Verse. Verify
+                # distinct explicit camera references in the editor. Tag lookups
+                # above reject ambiguous multi-camera matches.
                 Print("LightGunFN station ready: {Station.StationName}")
             else:
                 set SetupErrors += 1
-                Print("LightGunFN: {Station.StationName} needs separate target cameras or its supplied station tags.")
+                Print("LightGunFN: {Station.StationName} needs separate target cameras or its selected CameraProfile.")
+
+    ClaimGuardProfile(Profile : lightgun_guard_profile) : void=
+        if (Profile = lightgun_guard_profile.ExplicitOnly):
+            return
+        if (ClaimedGuardProfiles.Find[Profile]):
+            set SetupErrors += 1
+            Print("LightGunFN: guard profile is claimed by multiple encounters; use separate profiles or explicit arrays.")
+        else:
+            set ClaimedGuardProfiles += array{Profile}
 
     InitializeStationDevices() : void=
         for (Index -> Station : RouteStations):
@@ -476,16 +560,16 @@ lightgun_controller := class(creative_device):
             if (Trigger := Station.AdvanceTrigger?):
                 RememberSubscription(Trigger.TriggeredEvent.Subscribe(Handler.OnTriggered))
             for (Encounter : Station.Encounters):
-                Added := Encounter.Initialize(Self, Index)
+                Added := Encounter.Initialize(Self)
                 if (Added?):
                     set ActiveEncounters += array{Encounter}
 
     CacheStationCameraTargets() : void=
         for (Index -> Station : RouteStations):
-            StandingOption := ResolveStandingTarget(Index, Station)
+            StandingOption := ResolveStandingTarget(Station)
             if (Target := StandingOption?):
                 if (set StationStandingTargets[Index] = Target.GetTransform()) {}
-            CoverOption := ResolveCoverTarget(Index, Station)
+            CoverOption := ResolveCoverTarget(Station)
             if (Target := CoverOption?):
                 if (set StationDuckedTargets[Index] = Target.GetTransform()) {}
 
@@ -602,6 +686,9 @@ lightgun_controller := class(creative_device):
             RequestRouteAdvance()
 
     RefreshObjectiveHud(Player : player) : void=
+        # Completion may be raised by the previous call in this same tick.
+        if (SessionEnded?):
+            return
         if (Hud := Huds[Player]):
             if (EnableOnboardingChecklist? and CurrentStationIndex = 0):
                 if (not ChecklistShot?):
@@ -877,13 +964,15 @@ lightgun_controller := class(creative_device):
                 # Keep an already-active standing camera on the stack.
                 # Removing/re-adding it can restart a native camera blend.
                 if (Ducking := IsDucking[Agent], Ducking?):
-                    StopDucking(Agent)
+                    # Presentation only: preserve logical cover across travel.
+                    # Reapplying its camera on arrival must not imply a new reload.
+                    ApplyStandingCamera(Agent)
                 SetDuckInvulnerability(Agent, true)
                 ShowAdvancingBanner(Player)
 
     EndRouteGraceAfterDelay(Generation : int, GraceSeconds : float)<suspends> : void=
         Sleep(GraceSeconds)
-        # A previous R transition must not end a newer transition's protection.
+        # A previous route transition must not end a newer transition's protection.
         if (Generation <> RouteGraceGeneration):
             return
         set RouteGraceActive = false
@@ -900,7 +989,7 @@ lightgun_controller := class(creative_device):
             RefreshObjectiveHud(Player)
             if (Agent := agent[Player]):
                 MovePlayerPawnForDuck(Agent, false)
-                ApplyDesiredCover(Agent)
+                ApplyDesiredCover(Agent, ?AllowReload := logic{not Station.ReloadOnArrival?})
                 if (Station.ReloadOnArrival?):
                     ReloadAmmo(Player)
         # The same player now occupies a different firing lane. Do not wait
@@ -1216,23 +1305,27 @@ lightgun_controller := class(creative_device):
         if (not IsTransitioning?):
             ApplyDesiredCover(Agent)
 
-    ApplyDesiredCover(Agent : agent) : void=
+    ApplyDesiredCover(Agent : agent, ?AllowReload : logic = true) : void=
         if (SessionEnded? or IsTransitioning?):
             return
         if (Wanted := DesiredCover[Agent], Wanted?):
-            StartDucking(Agent)
+            StartDucking(Agent, ?AllowReload := AllowReload)
         else:
             StopDucking(Agent)
 
-    StartDucking(Agent : agent) : void=
+    StartDucking(Agent : agent, ?AllowReload : logic = true) : void=
         # Entering cover owns the normal reload path. There is deliberately no
         # separate reload-input subscription in this template.
+        var WasCovered : logic = false
+        if (CurrentCover := IsDucking[Agent]):
+            set WasCovered = CurrentCover
+        ShouldReload := LightgunShouldReloadOnCover(WasCovered, true, logic{AllowReload? and ReloadOnCover?})
         if (set IsDucking[Agent] = true) {}
         SetDuckInvulnerability(Agent, true)
         ApplyDuckedCamera(Agent)
         if (Player := player[Agent], Hud := Huds[Player]):
             Hud.SetStatus("IN COVER")
-        if (ReloadOnCover?, Player := player[Agent]):
+        if (ShouldReload?, Player := player[Agent]):
             ReloadAmmo(Player)
 
     StopDucking(Agent : agent) : void=
@@ -1321,6 +1414,8 @@ lightgun_controller := class(creative_device):
                 return
 
     RefreshHud(Player : player) : void=
+        if (SessionEnded?):
+            return
         if (Hud := Huds[Player], Rounds := Ammo[Player], Score := Scores[Player], Life := Lives[Player]):
             Hud.Update(Rounds, Max(MagazineSize, 1), Score, Life, RemainingTime, logic{MatchTimerSeconds > 0})
 

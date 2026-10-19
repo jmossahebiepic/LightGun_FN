@@ -5,25 +5,26 @@ using { /Verse.org/Verse }
 LG_GuideCategory_lightgun_route<localizes> : message = "00 - Device Guide"
 
 # Localised UEFN Details-panel help; no gameplay logic below is changed.
-LG_Description_lightgun_route_waypoint<localizes> : message = "Optional travel handle. Position and rotate this device, then add it to the destination station ArrivalWaypoints in order. No editable settings: its transform guides travel, not an automatically collision-avoiding spline. This guide is informational only; changing its text does not affect gameplay."
+LG_Description_lightgun_route_waypoint<localizes> : message = "Optional travel handle. Position and rotate this device, then add it to the destination station ArrivalWaypoints in order. Its transform guides travel; the Guide field is informational. Travel does not automatically avoid collision. This guide is informational only; changing its text does not affect gameplay."
 LG_Description_lightgun_station<localizes> : message = "A combat stop with independent shooting/cover views, encounters and progression inputs. Its transform is the rig destination; ArrivalWaypoints and travel settings describe the approach into this stop. This guide is informational only; changing its text does not affect gameplay."
 LG_Tip_lightgun_station_StationName<localizes> : message = "Readable station name used in setup diagnostics. Naming this field does not rename the Outliner actor or change route order; order comes from START CombatStations."
 LG_Tip_lightgun_station_AdvanceInput<localizes> : message = "Optional Input Trigger that advances only while this is the current station. Configure/enable the native device and bind its Creative Input Action in Fortnite. Do not also bind the same input through AdvanceTrigger."
 LG_Tip_lightgun_station_AdvanceTrigger<localizes> : message = "Optional Trigger for advancing from this station only. Connect a button, timer or other device to it. Requests at inactive stations or during travel are ignored."
 LG_Tip_lightgun_station_Encounters<localizes> : message = "Encounters belonging to this stop. Each activates once on first arrival and supplies shootable targets while this station is current. Shared encounter references do not reset waves. Every native spawner must belong to one encounter only."
 LG_Tip_lightgun_station_PlayerTargetHeightOffset<localizes> : message = "Station-specific world-Z adjustment in centimetres for the hidden player pawn enemies aim at. Positive raises it above railings; negative lowers it. Does not move cameras, the station marker or NPCs. Default 0; verify enemy sight lines."
-LG_Tip_lightgun_station_StandingCameraTarget<localizes> : message = "Required authoring Fixed Point Camera for the shooting view at this station. Assign a separate actor, not either LIVE camera. Add to Players on Start must be off. Position/rotation are cached; FOV and other camera settings are not copied."
-LG_Tip_lightgun_station_DuckedCameraTarget<localizes> : message = "Required authoring Fixed Point Camera for the cover view. Position it independently from the shooting target. Keep it separate from both LIVE cameras and off the player camera stack. Only its transform is copied."
+LG_Tip_lightgun_station_StandingCameraTarget<localizes> : message = "Assign an authoring Fixed Point Camera, or select a supplied CameraProfile. ExplicitOnly requires this reference. Assign a separate actor, not either LIVE camera. Add to Players on Start must be off. Position/rotation are cached; FOV and other camera settings are not copied."
+LG_Tip_lightgun_station_DuckedCameraTarget<localizes> : message = "Assign a cover Fixed Point Camera, or select a supplied CameraProfile. ExplicitOnly requires this reference. Position it independently from the shooting target. Keep it separate from both LIVE cameras and off the player camera stack. Only its transform is copied."
 LG_Tip_lightgun_station_AdvanceWhenEncountersComplete<localizes> : message = "Automatically request advancement when all assigned encounters reach their positive ExpectedEliminations counts. Empty encounter lists or any zero-count encounter will not auto-advance. Include delayed enemies in each full-wave count."
 LG_Tip_lightgun_station_ArrivalWaypoints<localizes> : message = "Optional lightgun_route_waypoint devices in travel order from the previous stop to THIS destination. Empty means direct travel. Their transforms guide rig/camera movement; paths are eased straight segments, not collision-aware splines."
 LG_Tip_lightgun_station_TravelDuration<localizes> : message = "Total desired approach duration in seconds; minimum 0.05. Applies to travel into this station, not a wait after arriving. Allow enough time and space for all waypoint segments."
 LG_Tip_lightgun_station_RouteEasing<localizes> : message = "How travel speed changes over the approach: Linear is constant; EaseIn starts slowly; EaseOut finishes slowly; EaseInOut softens both ends. EasingStrength controls the non-linear presets."
 LG_Tip_lightgun_station_EasingStrength<localizes> : message = "Exponent for the selected easing preset, clamped to 1..8. 1 is linear, 2 is the default gentle curve. Has no effect when RouteEasing is Linear."
 LG_Tip_lightgun_station_SamplesPerSecond<localizes> : message = "Hidden-player follow updates per second during travel, clamped to 1..120. Default 30. Live cameras use native interpolated movement separately; this is not the camera frame rate."
-LG_Tip_lightgun_station_ReloadOnArrival<localizes> : message = "Optional extra refill when travel into this station finishes. Cover entry is the normal reload mechanic, so leave this off unless the station should arrive with a full magazine regardless of cover state."
+LG_Tip_lightgun_station_ReloadOnArrival<localizes> : message = "One refill on arrival, regardless of cover state. Suppresses any simultaneous cover-entry refill so audio/ammo update only once. Off by default: travelling while already covered does not reload again."
 LG_Tip_lightgun_station_HideWaypointMarkersAtRuntime<localizes> : message = "Hide this station arrival-waypoint device markers during play. They still guide movement. This does not hide arbitrary props or change the path; leave false only when visually debugging authoring handles."
 LG_Description_lightgun_start_station<localizes> : message = "The first combat stop and route itinerary. Assign its shooting/cover target cameras and encounters, then list later stops in CombatStations. START is already stop 0 and must not appear in its own list. This guide is informational only; changing its text does not affect gameplay."
 LG_Tip_lightgun_start_station_CombatStations<localizes> : message = "Ordered list of later combat stations. START is automatically stop 0: never add START here or repeat a station. Empty gives a single-stop blank template. Duplicate each new station with its own cameras/encounter and reconnect references before adding it."
+LG_Tip_lightgun_station_CameraProfile<localizes> : message = "ExplicitOnly (default) requires both camera targets. The supplied InputBay, RangeA and RangeB profiles resolve uniquely tagged cameras by station identity, never by route order. Reordering is safe; a duplicated station should use ExplicitOnly and its own camera targets."
 LG_Category_lightgun_route_Station<localizes> : message = "01 - Station Setup"
 LG_Category_lightgun_route_StationProgress<localizes> : message = "03 - Progression"
 LG_Category_lightgun_route_Views<localizes> : message = "02 - Camera Views"
@@ -64,6 +65,11 @@ lightgun_station := class(creative_device):
         ToolTip := LG_Tip_lightgun_station_StationName
         Categories := array{LG_Category_lightgun_route_Station}
     StationName : string = "Combat station"
+
+    @editable:
+        ToolTip := LG_Tip_lightgun_station_CameraProfile
+        Categories := array{LG_Category_lightgun_route_Views}
+    CameraProfile : lightgun_camera_profile = lightgun_camera_profile.ExplicitOnly
 
     # Optional local progression sources. Only the CURRENT station may advance.
     # Configure the action on the Input Trigger; players bind its key in settings.

@@ -1,0 +1,8 @@
+*.verse text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.uasset binary
+*.umap binary
+*.png binary

@@ -21,3 +21,10 @@ Saved/
 Content/Developers/
 Content/Collections/
 **/Desktop.ini
+
+# Bound author-local identity and automation preferences
+/LightGunFN.uefnproject
+/LightGunFN.uplugin
+/dist/
+__pycache__/
+*.pyc
