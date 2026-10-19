@@ -16,7 +16,9 @@
   preserves logical cover during travel, and suppresses a second arrival refill.
 - **Identity exposure reduced in the new revision:** descriptors remain local,
   not tracked; absolute provenance path removed; allowlisted source exporter
-  excludes descriptors/automation flags/assets. Historical identifiers remain.
+  excludes descriptors/automation flags/assets. The authorized 19 October
+  rewrite also removes these identifiers from published reachable history;
+  cached URLs, forks and prior clones require separate cleanup.
 - **Reuse ambiguity clarified, not licensed:** RIGHTS.md explicitly grants no
   open-source rights pending ownership and license approval. Asset terms require
   separate review. No legal approval is implied.

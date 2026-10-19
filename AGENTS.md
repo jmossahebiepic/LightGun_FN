@@ -44,7 +44,8 @@ experimental learning prototype, not an official Epic product or cleared release
 - Bound descriptors are local-only; do not unignore or publish them.
 - Do not rewrite IDs/binaries to simulate a new project. Use the source export.
 - No local caches, logs, editor automation preferences or absolute source paths.
-- Historical identifiers remain in Git. Do not force-push a purge without
-  explicit authorization; identifiers are not authentication credentials.
+- Published history was sanitized on 19 October 2026. Never restore old
+  refs or recovery bundles. Further rewrites require explicit authorization;
+  identifiers are not authentication credentials.
 - Do not grant an open-source license or clear platform assets without the
   rights holder's authority. Keep unresolved release gates explicit.

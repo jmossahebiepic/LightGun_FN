@@ -1,5 +1,18 @@
 # Updating an existing bound checkout
 
+## History was rewritten on 19 October 2026
+
+Save UEFN and back up your complete local project and bound descriptors before
+syncing. Prefer a fresh clone into a new directory; do not merge or push the old
+history. Copy only reviewed new work across, and restore only your own authorized
+local descriptors when appropriate. Do not restore old project identifiers into
+a different account's project. Old commit IDs and links have changed.
+
+The original author's checkout was aligned to rewritten main while preserving
+its local bound descriptors. Other existing clones are not automatically updated.
+
+## Descriptor migration
+
 This revision deliberately stops tracking `LightGunFN.uefnproject` and
 `LightGunFN.uplugin`. **Before pulling into another existing checkout**, save
 UEFN and back up the entire project, including those two descriptors, outside
